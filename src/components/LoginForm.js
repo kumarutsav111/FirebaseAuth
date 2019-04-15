@@ -1,6 +1,6 @@
 import React, {Component} from 'react';
-import {View, TextInput, Text} from 'react-native';
-import {Button, Card, CardSection, Input} from './common';
+import {View, TextInput, Text, StyleSheet} from 'react-native';
+import {Button, Card, CardSection, Input, Spinner} from './common';
 import firebase from 'firebase';
 
 
@@ -8,42 +8,46 @@ class LoginForm extends Component<Props>{
     state = {
         userpassword: '',
         useremial: '',        
-        loginerror: ''
+        loginerror: '',
+        loading: false,
     };
     onButtonPress = () => {
         const {userpassword, useremial} = this.state;
-        console.log(useremial+ " " + userpassword)
+        this.setState({loginerror: "", loading: true})
         firebase.auth().signInWithEmailAndPassword(useremial, userpassword)
-        .then(
-          
-            loginerror = this.setState({loginerror : "Sucessfully loggegin"})
-        )
-        .catch((e)=>{
-            console.log("first catch",e),
-            firebase.auth().createUserWithEmailAndPassword(useremial, userpassword).catch(error => {
-                switch (error.code) {
-                  case 'auth/email-already-in-use':
-                    console.warn('This email address is already taken');
-                    break;
-                  case 'auth/invalid-email':
-                    console.warn('Invalid e-mail address format');
-                    break;
-                  case 'auth/weak-password':
-                    console.warn('Password is too weak');
-                    break;
-                  default:
-                    console.warn('Check your internet connection');
-                }
-              })
-              .then(info => {
-                if (info) {
-                  firebase.auth().currentUser.updateProfile({
-                   // displayName: name
-                  });
-                  //resolve(true);
-                }
-              });
+        .then( this.onLoginSucess.bind(this))
+        .catch((e)=>{            
+            firebase.auth().createUserWithEmailAndPassword(useremial, userpassword)
+            .then( this.onLoginSucess.bind(this))
+            .catch(
+                this.onLoginFail.bind(this)
+            );
         });
+    }
+
+    onLoginSucess(){
+        this.setState({
+            loading: false,
+            loginerror: '',
+            useremial: '',
+            userpassword: '',
+        })
+    }
+    onLoginFail(){
+        this.setState({
+            loginerror: "Authenticetion Falied",
+            loading: false,
+        });
+    }
+    renderButton(){
+        if(this.state.loading){
+            return <Spinner size ="small"/>
+        }
+        return (
+         <Button onPress={this.onButtonPress.bind(this)}>
+            Log in
+         </Button>
+        )
     }
     render(){        
         return (
@@ -68,16 +72,20 @@ class LoginForm extends Component<Props>{
                     />
                 </CardSection>
                 <CardSection>
-                    <Button onPress={this.onButtonPress.bind(this)}>
-                        Log in
-                    </Button>
+                   {this.renderButton()}
                 </CardSection>
-                <Text>
-                    {this.state.error}
+                <Text style= {styles.errorTextStyle}>
+                    {this.state.loginerror}
                 </Text>
             </Card>
         );
     }
 }
-
+const styles = StyleSheet.create({
+    errorTextStyle: {
+        color: 'red',
+        fontSize: 20,
+        textAlign: 'center'        
+    }
+});
 export default LoginForm;
